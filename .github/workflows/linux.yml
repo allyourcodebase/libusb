@@ -13,5 +13,7 @@ jobs:
       - uses: goto-bus-stop/setup-zig@v2
         with:
           version: master
+      - name: install libudev
+        run: apt install -y libudev-dev
       - name: build
         run: zig build
