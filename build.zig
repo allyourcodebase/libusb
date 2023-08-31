@@ -66,16 +66,16 @@ fn create_libusb(
         lib.addCSourceFiles(sunos_src, &.{});
     } else unreachable;
 
-    lib.addIncludePath("libusb");
+    lib.addIncludePath(.{ .path = "libusb" });
     lib.installHeader("libusb/libusb.h", "libusb.h");
 
     // config header
     if (target.isDarwin()) {
-        lib.addIncludePath("Xcode");
+        lib.addIncludePath(.{ .path = "Xcode" });
     } else if (target.getAbi() == .msvc) {
-        lib.addIncludePath("msvc");
+        lib.addIncludePath(.{ .path = "msvc" });
     } else if (target.getAbi() == .android) {
-        lib.addIncludePath("android");
+        lib.addIncludePath(.{ .path = "android" });
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
             .autoconf = .{ .path = "config.h.in" },
