@@ -12,9 +12,7 @@ fn define_from_bool(val: bool) ?u1 {
 
 pub fn build(b: *Build) void {
     const optimize = b.standardOptimizeOption(.{});
-    const target = b.standardTargetOptions(.{
-        .whitelist = targets,
-    });
+    const target = b.standardTargetOptions(.{});
 
     const libusb = create_libusb(b, target, optimize);
     b.installArtifact(libusb);
