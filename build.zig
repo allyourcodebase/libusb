@@ -48,6 +48,7 @@ fn create_libusb(
     if (target.isDarwin()) {
         lib.addCSourceFiles(darwin_src, &.{});
         lib.linkFrameworkNeeded("IOKit");
+        lib.linkFrameworkNeeded("Security");
     } else if (target.isLinux()) {
         lib.addCSourceFiles(linux_src, &.{});
         lib.linkSystemLibrary("udev");
