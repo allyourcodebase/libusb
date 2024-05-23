@@ -18,7 +18,8 @@ pub fn build(b: *Build) void {
     b.installArtifact(libusb);
 
     const build_all = b.step("all", "build libusb for all targets");
-    for (targets) |t| {
+    for (targets) |query| {
+        const t = b.resolveTargetQuery(query);
         const lib = create_libusb(b, t, optimize);
         build_all.dependOn(&lib.step);
     }
@@ -26,13 +27,13 @@ pub fn build(b: *Build) void {
 
 fn create_libusb(
     b: *Build,
-    target: std.zig.CrossTarget,
+    target: Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
-) *Build.CompileStep {
+) *Build.Step.Compile {
     const is_posix =
-        target.isDarwin() or
-        target.isLinux() or
-        target.isOpenBSD();
+        target.result.isDarwin() or
+        target.result.os.tag == .linux or
+        target.result.os.tag == .openbsd;
 
     const lib = b.addStaticLibrary(.{
         .name = "usb",
@@ -40,40 +41,41 @@ fn create_libusb(
         .optimize = optimize,
         .link_libc = true,
     });
-    lib.addCSourceFiles(src, &.{});
+    lib.addCSourceFiles(.{ .files = src, .flags = &.{} });
 
     if (is_posix)
-        lib.addCSourceFiles(posix_platform_src, &.{});
+        lib.addCSourceFiles(.{ .files = posix_platform_src, .flags = &.{} });
 
-    if (target.isDarwin()) {
-        lib.addCSourceFiles(darwin_src, &.{});
-        lib.linkFrameworkNeeded("IOKit");
-        lib.linkFrameworkNeeded("Security");
-    } else if (target.isLinux()) {
-        lib.addCSourceFiles(linux_src, &.{});
-        lib.linkSystemLibrary("udev");
-    } else if (target.isWindows()) {
-        lib.addCSourceFiles(windows_src, &.{});
-        lib.addCSourceFiles(windows_platform_src, &.{});
-    } else if (target.isNetBSD()) {
-        lib.addCSourceFiles(netbsd_src, &.{});
-    } else if (target.isOpenBSD()) {
-        lib.addCSourceFiles(openbsd_src, &.{});
-    } else if (target.getOsTag() == .haiku) {
-        lib.addCSourceFiles(haiku_src, &.{});
-    } else if (target.getOsTag() == .solaris) {
-        lib.addCSourceFiles(sunos_src, &.{});
-    } else unreachable;
+    switch (target.result.os.tag) {
+        .macos => {
+            lib.addCSourceFiles(.{ .files = darwin_src, .flags = &.{} });
+            lib.linkFrameworkNeeded("IOKit");
+            lib.linkFrameworkNeeded("Security");
+        },
+        .linux => {
+            lib.addCSourceFiles(.{ .files = linux_src, .flags = &.{} });
+            lib.linkSystemLibrary("udev");
+        },
+        .windows => {
+            lib.addCSourceFiles(.{ .files = windows_src, .flags = &.{} });
+            lib.addCSourceFiles(.{ .files = windows_platform_src, .flags = &.{} });
+        },
+        .netbsd => lib.addCSourceFiles(.{ .files = netbsd_src, .flags = &.{} }),
+        .openbsd => lib.addCSourceFiles(.{ .files = openbsd_src, .flags = &.{} }),
+        .haiku => lib.addCSourceFiles(.{ .files = haiku_src, .flags = &.{} }),
+        .solaris => lib.addCSourceFiles(.{ .files = sunos_src, .flags = &.{} }),
+        else => unreachable,
+    }
 
     lib.addIncludePath(.{ .path = "libusb" });
-    lib.installHeader("libusb/libusb.h", "libusb.h");
+    lib.installHeader(b.path("libusb/libusb.h"), "libusb.h");
 
     // config header
-    if (target.isDarwin()) {
+    if (target.result.isDarwin()) {
         lib.addIncludePath(.{ .path = "Xcode" });
-    } else if (target.getAbi() == .msvc) {
+    } else if (target.result.abi == .msvc) {
         lib.addIncludePath(.{ .path = "msvc" });
-    } else if (target.getAbi() == .android) {
+    } else if (target.result.isAndroid()) {
         lib.addIncludePath(.{ .path = "android" });
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
@@ -83,7 +85,7 @@ fn create_libusb(
             .ENABLE_DEBUG_LOGGING = define_from_bool(optimize == .Debug),
             .ENABLE_LOGGING = 1,
             .HAVE_ASM_TYPES_H = null,
-            .HAVE_CLOCK_GETTIME = define_from_bool(!target.isWindows()),
+            .HAVE_CLOCK_GETTIME = define_from_bool(target.result.os.tag != .windows),
             .HAVE_DECL_EFD_CLOEXEC = null,
             .HAVE_DECL_EFD_NONBLOCK = null,
             .HAVE_DECL_TFD_CLOEXEC = null,
@@ -91,7 +93,7 @@ fn create_libusb(
             .HAVE_DLFCN_H = null,
             .HAVE_EVENTFD = null,
             .HAVE_INTTYPES_H = null,
-            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.isDarwin()),
+            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.isDarwin()),
             .HAVE_LIBUDEV = null,
             .HAVE_NFDS_T = null,
             .HAVE_PIPE2 = null,
@@ -119,7 +121,7 @@ fn create_libusb(
             .PACKAGE_URL = "http://libusb.info",
             .PACKAGE_VERSION = "1.0.26",
             .PLATFORM_POSIX = define_from_bool(is_posix),
-            .PLATFORM_WINDOWS = define_from_bool(target.isWindows()),
+            .PLATFORM_WINDOWS = define_from_bool(target.result.os.tag == .windows),
             .STDC_HEADERS = 1,
             .UMOCKDEV_HOTPLUG = null,
             .USE_SYSTEM_LOGGING_FACILITY = null,
