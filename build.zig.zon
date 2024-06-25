@@ -1,4 +1,11 @@
 .{
     .name = "libusb",
     .version = "1.0.26",
+    .paths = .{
+        "README",
+        "COPYING",
+        "build.zig",
+        "build.zig.zon",
+        "libusb",
+    },
 }
