@@ -34,7 +34,12 @@ fn create_libusb(
         target.result.os.tag == .linux or
         target.result.os.tag == .openbsd;
 
-    const lib = b.addStaticLibrary(.{
+    const lib = if (target.result.isAndroid()) b.addSharedLibrary(.{
+        .name = "usb",
+        .target = target,
+        .optimize = optimize,
+        .link_libc = true,
+    }) else b.addStaticLibrary(.{
         .name = "usb",
         .target = target,
         .optimize = optimize,
@@ -49,6 +54,8 @@ fn create_libusb(
         lib.addCSourceFiles(.{ .files = darwin_src });
         lib.linkFrameworkNeeded("IOKit");
         lib.linkFrameworkNeeded("Security");
+    } else if (target.result.isAndroid()) {
+        lib.addCSourceFiles(.{ .files = android_src });
     } else if (target.result.os.tag == .linux) {
         lib.addCSourceFiles(.{ .files = linux_src });
         lib.linkSystemLibrary("udev");
@@ -73,7 +80,7 @@ fn create_libusb(
         lib.addIncludePath(b.path("Xcode"));
     } else if (target.result.abi == .msvc) {
         lib.addIncludePath(b.path("msvc"));
-    } else if (target.result.abi == .android) {
+    } else if (target.result.isAndroid()) {
         lib.addIncludePath(b.path("android"));
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
@@ -166,6 +173,11 @@ const haiku_src: []const []const u8 = &.{
 const linux_src: []const []const u8 = &.{
     "libusb/os/linux_netlink.c",
     "libusb/os/linux_udev.c",
+    "libusb/os/linux_usbfs.c",
+};
+
+const android_src: []const []const u8 = &.{
+    "libusb/os/linux_netlink.c",
     "libusb/os/linux_usbfs.c",
 };
 
