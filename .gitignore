@@ -64,3 +64,4 @@ xcuserdata
 *.xcworkspace
 zig-cache
 zig-out
+.zig-cache
