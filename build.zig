@@ -13,13 +13,18 @@ fn define_from_bool(val: bool) ?u1 {
 pub fn build(b: *Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
+    const system_libudev = b.option(
+        bool,
+        "system-libudev",
+        "link with system libudev on linux",
+    ) orelse true;
 
-    const libusb = create_libusb(b, target, optimize);
+    const libusb = create_libusb(b, target, optimize, system_libudev);
     b.installArtifact(libusb);
 
     const build_all = b.step("all", "build libusb for all targets");
     for (targets(b)) |t| {
-        const lib = create_libusb(b, t, optimize);
+        const lib = create_libusb(b, t, optimize, system_libudev);
         build_all.dependOn(&lib.step);
     }
 }
@@ -28,6 +33,7 @@ fn create_libusb(
     b: *Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    system_libudev: bool,
 ) *Build.Step.Compile {
     const is_posix =
         target.result.isDarwin() or
@@ -51,7 +57,10 @@ fn create_libusb(
         lib.linkFrameworkNeeded("Security");
     } else if (target.result.os.tag == .linux) {
         lib.addCSourceFiles(.{ .files = linux_src });
-        lib.linkSystemLibrary("udev");
+        if (system_libudev) {
+            lib.addCSourceFiles(.{ .files = linux_udev_src });
+            lib.linkSystemLibrary("udev");
+        }
     } else if (target.result.os.tag == .windows) {
         lib.addCSourceFiles(.{ .files = windows_src });
         lib.addCSourceFiles(.{ .files = windows_platform_src });
@@ -92,7 +101,7 @@ fn create_libusb(
             .HAVE_EVENTFD = null,
             .HAVE_INTTYPES_H = null,
             .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.isDarwin()),
-            .HAVE_LIBUDEV = null,
+            .HAVE_LIBUDEV = define_from_bool(system_libudev),
             .HAVE_NFDS_T = null,
             .HAVE_PIPE2 = null,
             .HAVE_PTHREAD_CONDATTR_SETCLOCK = null,
@@ -165,8 +174,10 @@ const haiku_src: []const []const u8 = &.{
 
 const linux_src: []const []const u8 = &.{
     "libusb/os/linux_netlink.c",
-    "libusb/os/linux_udev.c",
     "libusb/os/linux_usbfs.c",
+};
+const linux_udev_src: []const []const u8 = &.{
+    "libusb/os/linux_udev.c",
 };
 
 const netbsd_src: []const []const u8 = &.{
