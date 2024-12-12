@@ -8,5 +8,8 @@
         "build.zig.zon",
         "libusb",
         "config.h.in",
+        "Xcode",
+        "android",
+        "msvc",
     },
 }
