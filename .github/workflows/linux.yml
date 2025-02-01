@@ -6,16 +6,12 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [ubuntu-20.04, ubuntu-22.04]
-    runs-on: ${{ matrix.os }}
-
+    runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
       - uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: master
       - name: install libudev
         run: sudo apt install -y libudev-dev
       - name: build

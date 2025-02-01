@@ -6,15 +6,11 @@ on:
 
 jobs:
   build:
-    strategy:
-      matrix:
-        os: [macos-11, macos-12, macos-13]
-    runs-on: ${{ matrix.os }}
-
+    runs-on: macos-latest
     steps:
       - uses: actions/checkout@v2
       - uses: goto-bus-stop/setup-zig@v2
         with:
-          version: 0.13.0
+          version: master
       - name: build
         run: zig build
