@@ -53,8 +53,9 @@ fn create_libusb(
 
     if (target.result.isDarwin()) {
         lib.addCSourceFiles(.{ .files = darwin_src });
-        lib.linkFrameworkNeeded("IOKit");
-        lib.linkFrameworkNeeded("Security");
+        lib.linkFramework("CoreFoundation");
+        lib.linkFramework("IOKit");
+        lib.linkFramework("Security");
     } else if (target.result.os.tag == .linux) {
         lib.addCSourceFiles(.{ .files = linux_src });
         if (system_libudev) {
