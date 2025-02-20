@@ -6,6 +6,7 @@
         "COPYING",
         "build.zig",
         "build.zig.zon",
+        "config.h.in",
         "libusb",
         "config.h.in",
         "Xcode",
