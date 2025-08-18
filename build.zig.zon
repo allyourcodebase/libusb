@@ -2,7 +2,7 @@
     .name = .libusb,
     .version = "1.0.26",
     .fingerprint = 0x3e6dc4ccb88fc2c2,
-    .minimum_zig_version = "0.14.1",
+    .minimum_zig_version = "0.15.0-dev.1593+399bace2f",
     .paths = .{
         "README",
         "COPYING",
