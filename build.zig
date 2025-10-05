@@ -13,18 +13,15 @@ fn define_from_bool(val: bool) ?u1 {
 pub fn build(b: *Build) void {
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
-    const system_libudev = b.option(
-        bool,
-        "system-libudev",
-        "link with system libudev on linux",
-    ) orelse true;
+    const system_libudev = b.option(bool, "system-libudev", "link with system libudev on linux") orelse true;
+    const linkage = b.option(std.builtin.LinkMode, "linkage", "static vs dynamic linkage") orelse .dynamic;
 
-    const libusb = create_libusb(b, target, optimize, system_libudev);
+    const libusb = create_libusb(b, target, optimize, linkage, system_libudev);
     b.installArtifact(libusb);
 
     const build_all = b.step("all", "build libusb for all targets");
     for (targets(b)) |t| {
-        const lib = create_libusb(b, t, optimize, system_libudev);
+        const lib = create_libusb(b, t, optimize, linkage, system_libudev);
         build_all.dependOn(&lib.step);
     }
 }
@@ -33,25 +30,29 @@ fn create_libusb(
     b: *Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
+    linkage: std.builtin.LinkMode,
     system_libudev: bool,
 ) *Build.Step.Compile {
     const is_posix =
-        target.result.isDarwin() or
+        target.result.os.tag == .macos or
         target.result.os.tag == .linux or
         target.result.os.tag == .openbsd;
 
-    const lib = b.addStaticLibrary(.{
+    const lib = b.addLibrary(.{
         .name = "usb",
-        .target = target,
-        .optimize = optimize,
-        .link_libc = true,
+        .linkage = linkage,
+        .root_module = b.createModule(.{
+            .target = target,
+            .optimize = optimize,
+            .link_libc = true,
+        }),
     });
     lib.addCSourceFiles(.{ .files = src });
 
     if (is_posix)
         lib.addCSourceFiles(.{ .files = posix_platform_src });
 
-    if (target.result.isDarwin()) {
+    if (target.result.os.tag == .macos) {
         lib.addCSourceFiles(.{ .files = darwin_src });
         lib.linkFramework("CoreFoundation");
         lib.linkFramework("IOKit");
@@ -79,7 +80,7 @@ fn create_libusb(
     lib.installHeader(b.path("libusb/libusb.h"), "libusb.h");
 
     // config header
-    if (target.result.isDarwin()) {
+    if (target.result.os.tag == .macos) {
         lib.addIncludePath(b.path("Xcode"));
     } else if (target.result.abi == .msvc) {
         lib.addIncludePath(b.path("msvc"));
@@ -87,7 +88,7 @@ fn create_libusb(
         lib.addIncludePath(b.path("android"));
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
-            .autoconf = b.path("config.h.in"),
+            .autoconf_undef = b.path("config.h.in"),
         } }, .{
             .DEFAULT_VISIBILITY = .@"__attribute__ ((visibility (\"default\")))",
             .ENABLE_DEBUG_LOGGING = define_from_bool(optimize == .Debug),
@@ -101,7 +102,7 @@ fn create_libusb(
             .HAVE_DLFCN_H = null,
             .HAVE_EVENTFD = null,
             .HAVE_INTTYPES_H = null,
-            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.isDarwin()),
+            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.os.tag == .macos),
             .HAVE_LIBUDEV = define_from_bool(system_libudev),
             .HAVE_NFDS_T = null,
             .HAVE_PIPE2 = null,

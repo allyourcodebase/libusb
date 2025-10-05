@@ -2,19 +2,19 @@ name: macos
 on:
   push:
   pull_request:
-    branches: [ master ]
+    branches: [master]
 
 jobs:
   build:
     strategy:
       matrix:
-        os: [macos-11, macos-12, macos-13]
+        os: [macos-latest]
     runs-on: ${{ matrix.os }}
 
     steps:
       - uses: actions/checkout@v2
-      - uses: goto-bus-stop/setup-zig@v2
+      - uses: mlugg/setup-zig@v2
         with:
-          version: 0.13.0
+          version: 0.15.1
       - name: build
         run: zig build
