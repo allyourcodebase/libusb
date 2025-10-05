@@ -1,6 +1,8 @@
 .{
-    .name = "libusb",
-    .version = "1.0.26",
+    .name = .libusb,
+    .version = "0.0.1",
+    .minimum_zig_version = "0.15.1",
+    .fingerprint = 0x3e6dc4cc42984d3f,
     .paths = .{
         "README",
         "COPYING",
