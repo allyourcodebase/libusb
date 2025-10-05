@@ -88,7 +88,7 @@ fn create_libusb(
         lib.addIncludePath(b.path("android"));
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
-            .autoconf_at = b.path("config.h.in"),
+            .autoconf_undef = b.path("config.h.in"),
         } }, .{
             .DEFAULT_VISIBILITY = .@"__attribute__ ((visibility (\"default\")))",
             .ENABLE_DEBUG_LOGGING = define_from_bool(optimize == .Debug),
