@@ -19,6 +19,7 @@ pub fn build(b: *Build) void {
 
     const build_all = b.step("all", "build libusb for all targets");
     for (targets(b)) |t| {
+        if (t.result.os.tag == .freebsd) continue;
         const lib = create_libusb(b, t, optimize);
         build_all.dependOn(&lib.step);
     }
