@@ -30,7 +30,7 @@ fn create_libusb(
     optimize: std.builtin.OptimizeMode,
 ) *Build.Step.Compile {
     const is_posix =
-        target.result.isDarwin() or
+        target.result.os.tag == .macos or
         target.result.os.tag == .linux or
         target.result.os.tag == .openbsd;
 
@@ -45,10 +45,10 @@ fn create_libusb(
     if (is_posix)
         lib.addCSourceFiles(.{ .files = posix_platform_src });
 
-    if (target.result.isDarwin()) {
+    if (target.result.os.tag == .macos) {
         lib.addCSourceFiles(.{ .files = darwin_src });
-        lib.linkFrameworkNeeded("IOKit");
-        lib.linkFrameworkNeeded("Security");
+        lib.linkFramework("IOKit");
+        lib.linkFramework("Security");
     } else if (target.result.os.tag == .linux) {
         lib.addCSourceFiles(.{ .files = linux_src });
         lib.linkSystemLibrary("udev");
@@ -69,7 +69,7 @@ fn create_libusb(
     lib.installHeader(b.path("libusb/libusb.h"), "libusb.h");
 
     // config header
-    if (target.result.isDarwin()) {
+    if (target.result.os.tag == .macos) {
         lib.addIncludePath(b.path("Xcode"));
     } else if (target.result.abi == .msvc) {
         lib.addIncludePath(b.path("msvc"));
@@ -91,7 +91,7 @@ fn create_libusb(
             .HAVE_DLFCN_H = null,
             .HAVE_EVENTFD = null,
             .HAVE_INTTYPES_H = null,
-            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.isDarwin()),
+            .HAVE_IOKIT_USB_IOUSBHOSTFAMILYDEFINITIONS_H = define_from_bool(target.result.os.tag == .macos),
             .HAVE_LIBUDEV = null,
             .HAVE_NFDS_T = null,
             .HAVE_PIPE2 = null,
