@@ -47,45 +47,43 @@ fn create_libusb(
             .link_libc = true,
         }),
     });
-    lib.addCSourceFiles(.{ .files = src });
+    lib.root_module.addCSourceFiles(.{ .files = src });
 
     if (is_posix)
-        lib.addCSourceFiles(.{ .files = posix_platform_src });
+        lib.root_module.addCSourceFiles(.{ .files = posix_platform_src });
 
     if (target.result.os.tag == .macos) {
-        lib.addCSourceFiles(.{ .files = darwin_src });
-        lib.linkFramework("CoreFoundation");
-        lib.linkFramework("IOKit");
-        lib.linkFramework("Security");
+        lib.root_module.addCSourceFiles(.{ .files = darwin_src });
+        lib.root_module.linkFramework("CoreFoundation", .{});
+        lib.root_module.linkFramework("IOKit", .{});
+        lib.root_module.linkFramework("Security", .{});
     } else if (target.result.os.tag == .linux) {
-        lib.addCSourceFiles(.{ .files = linux_src });
+        lib.root_module.addCSourceFiles(.{ .files = linux_src });
         if (system_libudev) {
-            lib.addCSourceFiles(.{ .files = linux_udev_src });
-            lib.linkSystemLibrary("udev");
+            lib.root_module.addCSourceFiles(.{ .files = linux_udev_src });
+            lib.root_module.linkSystemLibrary("udev", .{});
         }
     } else if (target.result.os.tag == .windows) {
-        lib.addCSourceFiles(.{ .files = windows_src });
-        lib.addCSourceFiles(.{ .files = windows_platform_src });
+        lib.root_module.addCSourceFiles(.{ .files = windows_src });
+        lib.root_module.addCSourceFiles(.{ .files = windows_platform_src });
     } else if (target.result.os.tag == .netbsd) {
-        lib.addCSourceFiles(.{ .files = netbsd_src });
+        lib.root_module.addCSourceFiles(.{ .files = netbsd_src });
     } else if (target.result.os.tag == .openbsd) {
-        lib.addCSourceFiles(.{ .files = openbsd_src });
+        lib.root_module.addCSourceFiles(.{ .files = openbsd_src });
     } else if (target.result.os.tag == .haiku) {
-        lib.addCSourceFiles(.{ .files = haiku_src });
-    } else if (target.result.os.tag == .solaris) {
-        lib.addCSourceFiles(.{ .files = sunos_src });
+        lib.root_module.addCSourceFiles(.{ .files = haiku_src });
     } else unreachable;
 
-    lib.addIncludePath(b.path("libusb"));
+    lib.root_module.addIncludePath(b.path("libusb"));
     lib.installHeader(b.path("libusb/libusb.h"), "libusb.h");
 
     // config header
     if (target.result.os.tag == .macos) {
-        lib.addIncludePath(b.path("Xcode"));
+        lib.root_module.addIncludePath(b.path("Xcode"));
     } else if (target.result.abi == .msvc) {
-        lib.addIncludePath(b.path("msvc"));
+        lib.root_module.addIncludePath(b.path("msvc"));
     } else if (target.result.abi == .android) {
-        lib.addIncludePath(b.path("android"));
+        lib.root_module.addIncludePath(b.path("android"));
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
             .autoconf_undef = b.path("config.h.in"),
@@ -139,7 +137,7 @@ fn create_libusb(
             ._WIN32_WINNT = null,
             .@"inline" = null,
         });
-        lib.addConfigHeader(config_h);
+        lib.root_module.addConfigHeader(config_h);
     }
 
     return lib;
@@ -207,7 +205,7 @@ const windows_src: []const []const u8 = &.{
     "libusb/os/windows_winusb.c",
 };
 
-pub fn targets(b: *Build) [17]std.Build.ResolvedTarget {
+pub fn targets(b: *Build) [16]std.Build.ResolvedTarget {
     return [_]std.Build.ResolvedTarget{
         // zig fmt: off
         b.resolveTargetQuery(.{}),
@@ -226,7 +224,6 @@ pub fn targets(b: *Build) [17]std.Build.ResolvedTarget {
         b.resolveTargetQuery(.{ .os_tag = .netbsd,  .cpu_arch = .x86_64                         }),
         b.resolveTargetQuery(.{ .os_tag = .openbsd, .cpu_arch = .x86_64                         }),
         b.resolveTargetQuery(.{ .os_tag = .haiku,   .cpu_arch = .x86_64                         }),
-        b.resolveTargetQuery(.{ .os_tag = .solaris, .cpu_arch = .x86_64                         }),
         //zig fmt: on
     };
 }
