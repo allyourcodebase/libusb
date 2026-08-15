@@ -11,23 +11,25 @@ fn define_from_bool(val: bool) ?u1 {
 }
 
 pub fn build(b: *Build) void {
+    const libusb_dep = b.dependency("libusb_c", .{});
     const optimize = b.standardOptimizeOption(.{});
     const target = b.standardTargetOptions(.{});
     const system_libudev = b.option(bool, "system-libudev", "link with system libudev on linux") orelse true;
     const linkage = b.option(std.builtin.LinkMode, "linkage", "static vs dynamic linkage") orelse .dynamic;
 
-    const libusb = create_libusb(b, target, optimize, linkage, system_libudev);
+    const libusb = create_libusb(b, libusb_dep.builder, target, optimize, linkage, system_libudev);
     b.installArtifact(libusb);
 
     const build_all = b.step("all", "build libusb for all targets");
     for (targets(b)) |t| {
-        const lib = create_libusb(b, t, optimize, linkage, system_libudev);
+        const lib = create_libusb(b, libusb_dep.builder, t, optimize, linkage, system_libudev);
         build_all.dependOn(&lib.step);
     }
 }
 
 fn create_libusb(
     b: *Build,
+    libusb_b: *Build,
     target: std.Build.ResolvedTarget,
     optimize: std.builtin.OptimizeMode,
     linkage: std.builtin.LinkMode,
@@ -47,43 +49,73 @@ fn create_libusb(
             .link_libc = true,
         }),
     });
-    lib.root_module.addCSourceFiles(.{ .files = src });
+    lib.root_module.addCSourceFiles(.{
+        .root = libusb_b.path(""),
+        .files = src,
+    });
 
     if (is_posix)
-        lib.root_module.addCSourceFiles(.{ .files = posix_platform_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = posix_platform_src,
+        });
 
     if (target.result.os.tag == .macos) {
-        lib.root_module.addCSourceFiles(.{ .files = darwin_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = darwin_src,
+        });
         lib.root_module.linkFramework("CoreFoundation", .{});
         lib.root_module.linkFramework("IOKit", .{});
         lib.root_module.linkFramework("Security", .{});
     } else if (target.result.os.tag == .linux) {
-        lib.root_module.addCSourceFiles(.{ .files = linux_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = linux_src,
+        });
         if (system_libudev) {
-            lib.root_module.addCSourceFiles(.{ .files = linux_udev_src });
+            lib.root_module.addCSourceFiles(.{
+                .root = libusb_b.path(""),
+                .files = linux_udev_src,
+            });
             lib.root_module.linkSystemLibrary("udev", .{});
         }
     } else if (target.result.os.tag == .windows) {
-        lib.root_module.addCSourceFiles(.{ .files = windows_src });
-        lib.root_module.addCSourceFiles(.{ .files = windows_platform_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = windows_src,
+        });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = windows_platform_src,
+        });
     } else if (target.result.os.tag == .netbsd) {
-        lib.root_module.addCSourceFiles(.{ .files = netbsd_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = netbsd_src,
+        });
     } else if (target.result.os.tag == .openbsd) {
-        lib.root_module.addCSourceFiles(.{ .files = openbsd_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = openbsd_src,
+        });
     } else if (target.result.os.tag == .haiku) {
-        lib.root_module.addCSourceFiles(.{ .files = haiku_src });
+        lib.root_module.addCSourceFiles(.{
+            .root = libusb_b.path(""),
+            .files = haiku_src,
+        });
     } else unreachable;
 
-    lib.root_module.addIncludePath(b.path("libusb"));
-    lib.installHeader(b.path("libusb/libusb.h"), "libusb.h");
+    lib.root_module.addIncludePath(libusb_b.path("libusb"));
+    lib.installHeader(libusb_b.path("libusb/libusb.h"), "libusb.h");
 
     // config header
     if (target.result.os.tag == .macos) {
-        lib.root_module.addIncludePath(b.path("Xcode"));
+        lib.root_module.addIncludePath(libusb_b.path("Xcode"));
     } else if (target.result.abi == .msvc) {
-        lib.root_module.addIncludePath(b.path("msvc"));
+        lib.root_module.addIncludePath(libusb_b.path("msvc"));
     } else if (target.result.abi == .android) {
-        lib.root_module.addIncludePath(b.path("android"));
+        lib.root_module.addIncludePath(libusb_b.path("android"));
     } else {
         const config_h = b.addConfigHeader(.{ .style = .{
             .autoconf_undef = b.path("config.h.in"),
@@ -224,6 +256,6 @@ pub fn targets(b: *Build) [16]std.Build.ResolvedTarget {
         b.resolveTargetQuery(.{ .os_tag = .netbsd,  .cpu_arch = .x86_64                         }),
         b.resolveTargetQuery(.{ .os_tag = .openbsd, .cpu_arch = .x86_64                         }),
         b.resolveTargetQuery(.{ .os_tag = .haiku,   .cpu_arch = .x86_64                         }),
-        //zig fmt: on
+        // zig fmt: on
     };
 }
